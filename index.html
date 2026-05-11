@@ -3,32 +3,100 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>My Photo Showcase</title>
+    <title>Photo Showcase</title>
     <style>
-        body { font-family: Arial, sans-serif; background: #121212; color: #ffffff; margin: 0; padding: 20px; }
-        h1 { text-align: center; margin-bottom: 20px; letter-spacing: 2px; }
-        .album-tabs { display: flex; justify-content: center; gap: 10px; margin-bottom: 30px; flex-wrap: wrap; }
-        .tab-btn { background: #333; color: white; border: none; padding: 10px 20px; cursor: pointer; border-radius: 5px; font-weight: bold; transition: 0.3s; text-transform: uppercase; }
-        .tab-btn:hover { background: #555; }
-        .tab-btn.active { background: #007bff; }
-        .gallery { display: grid; grid-template-columns: repeat(auto-fill, minmax(250px, 1fr)); gap: 20px; max-width: 1200px; margin: 0 auto; }
-        .photo-card { background: #1e1e1e; border-radius: 8px; overflow: hidden; display: flex; flex-direction: column; }
-        /* Using the display image makes it super fast */
-        .photo-card img { width: 100%; height: 250px; object-fit: cover; transition: transform 0.3s ease; }
-        .photo-card img:hover { transform: scale(1.05); }
-        .actions { padding: 15px; display: flex; justify-content: space-between; align-items: center; background: #1e1e1e;}
-        .filename { font-size: 0.85em; color: #aaaaaa; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; max-width: 60%; }
-        .download-btn { background: #007bff; color: white; padding: 8px 12px; text-decoration: none; border-radius: 4px; font-size: 0.85em; font-weight: bold;}
-        .download-btn:hover { background: #0056b3; }
+        :root {
+            --bg: #0a0a0a;
+            --card-bg: #161616;
+            --accent: #3b82f6;
+            --text: #eeeeee;
+            --text-dim: #a0a0a0;
+        }
+
+        body { 
+            font-family: 'Segoe UI', Roboto, Helvetica, Arial, sans-serif; 
+            background: var(--bg); 
+            color: var(--text); 
+            margin: 0; 
+            padding: 20px;
+            line-height: 1.6;
+        }
+
+        h1 { text-align: center; font-weight: 300; letter-spacing: 4px; margin-bottom: 40px; color: var(--text); }
+
+        /* Album Tabs */
+        .album-tabs { display: flex; justify-content: center; gap: 15px; margin-bottom: 40px; flex-wrap: wrap; }
+        .tab-btn { 
+            background: transparent; border: 1px solid #333; color: var(--text-dim); 
+            padding: 8px 20px; cursor: pointer; border-radius: 20px; 
+            transition: all 0.3s ease; font-size: 0.9em;
+        }
+        .tab-btn:hover { border-color: var(--accent); color: var(--text); }
+        .tab-btn.active { background: var(--accent); border-color: var(--accent); color: white; box-shadow: 0 4px 15px rgba(59, 130, 246, 0.4); }
+
+        /* Gallery Grid */
+        .gallery { 
+            display: grid; 
+            grid-template-columns: repeat(auto-fill, minmax(280px, 1fr)); 
+            gap: 25px; 
+            max-width: 1400px; 
+            margin: 0 auto; 
+        }
+
+        /* Card Animation */
+        @keyframes fadeInUp {
+            from { opacity: 0; transform: translateY(20px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+
+        .photo-card { 
+            background: var(--card-bg); 
+            border-radius: 12px; 
+            overflow: hidden; 
+            display: flex; 
+            flex-direction: column;
+            animation: fadeInUp 0.6s ease forwards;
+            transition: transform 0.3s ease;
+        }
+        .photo-card:hover { transform: translateY(-5px); }
+
+        .img-container { width: 100%; height: 250px; overflow: hidden; cursor: zoom-in; }
+        .photo-card img { width: 100%; height: 100%; object-fit: cover; transition: transform 0.5s ease; }
+        .photo-card:hover img { transform: scale(1.1); }
+
+        .actions { padding: 15px; display: flex; justify-content: space-between; align-items: center; background: var(--card-bg); }
+        .filename { font-size: 0.8em; color: var(--text-dim); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; max-width: 140px; }
+        
+        .download-link { 
+            color: var(--accent); text-decoration: none; font-size: 0.85em; 
+            font-weight: 600; transition: opacity 0.2s;
+        }
+        .download-link:hover { text-decoration: underline; opacity: 0.8; }
+
+        /* Lightbox (Big Window) */
+        #lightbox {
+            display: none; position: fixed; z-index: 1000; top: 0; left: 0; width: 100%; height: 100%;
+            background: rgba(0,0,0,0.95); align-items: center; justify-content: center; cursor: zoom-out;
+        }
+        #lightbox img { max-width: 90%; max-height: 90%; border-radius: 5px; box-shadow: 0 0 30px rgba(0,0,0,0.5); }
+        #lightbox.active { display: flex; animation: fadeIn 0.3s ease; }
+
+        @keyframes fadeIn { from { opacity: 0; } to { opacity: 1; } }
+
     </style>
 </head>
 <body>
-    <h1>MY PHOTO SHOWCASE</h1>
+
+    <h1>SHOWCASE</h1>
     <div class="album-tabs" id="albumTabs"></div>
     <div class="gallery" id="gallery"></div>
 
+    <!-- Lightbox Structure -->
+    <div id="lightbox" onclick="this.classList.remove('active')">
+        <img id="lightboxImg" src="" alt="Full View">
+    </div>
+
     <script>
-        // Add a random timestamp so the browser doesn't cache an old version of the gallery
         fetch('gallery.json?v=' + new Date().getTime())
             .then(response => response.json())
             .then(data => {
@@ -57,27 +125,36 @@
 
                     galleryDiv.innerHTML = '';
                     const photos = data[albumName];
-                    photos.forEach(item => {
+                    photos.forEach((item, index) => {
                         const card = document.createElement('div');
                         card.className = 'photo-card';
-                        // Use item.display for viewing, but item.url for full quality downloading!
+                        // Delayed animation for each card
+                        card.style.animationDelay = (index * 0.05) + 's';
+                        
                         const displayImg = item.display ? item.display : item.url;
                         card.innerHTML = `
-                            <a href="${item.url}" target="_blank">
+                            <div class="img-container" onclick="openLightbox('${item.url}')">
                                 <img src="${displayImg}" loading="lazy" alt="${item.filename}">
-                            </a>
+                            </div>
                             <div class="actions">
                                 <span class="filename">${item.filename}</span>
-                                <a href="${item.url}" target="_blank" class="download-btn" download="${item.filename}">Download Original</a>
+                                <a href="${item.url}" target="_blank" class="download-link" download>Download</a>
                             </div>
                         `;
                         galleryDiv.appendChild(card);
                     });
                 };
 
+                window.openLightbox = function(url) {
+                    const lb = document.getElementById('lightbox');
+                    const lbImg = document.getElementById('lightboxImg');
+                    lbImg.src = url;
+                    lb.classList.add('active');
+                };
+
                 loadAlbum(albums[0]);
             })
-            .catch(error => console.log('No photos yet!', error));
+            .catch(error => console.log('Error loading gallery:', error));
     </script>
 </body>
 </html>
